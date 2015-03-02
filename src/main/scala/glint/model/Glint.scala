@@ -7,5 +7,5 @@ package glint.model
  */
 
 trait Glint {
-
-}
+  val version:Long = -1
+  val glintID:Long = -1}

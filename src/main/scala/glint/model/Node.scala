@@ -7,5 +7,4 @@ package glint.model
  */
 
 trait Node extends Glint{
-
-}
+  val nodeID:Long = -1}
