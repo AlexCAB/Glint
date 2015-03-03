@@ -20,7 +20,7 @@ trait Cypher {
    * @tparam T - result type
    * @return - Query instance
    */
-  def query[T](q:String):Query[T] = new Query[T](q, model.connector)
+  def query[T](q:String):Query[T] = new Query[T](q, model.provider)
 
 
 }

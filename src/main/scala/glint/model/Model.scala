@@ -1,5 +1,5 @@
 package glint.model
-import glint.database.{EmbeddedDBConnector, Connector}
+import glint.database.Provider
 
 
 /**
@@ -7,7 +7,7 @@ import glint.database.{EmbeddedDBConnector, Connector}
  * Created by CAB on 01.03.2015.
  */
 
-class Model(val connector:Connector = new EmbeddedDBConnector("")) {
+class Model(val provider:Provider) {
 
 
 }

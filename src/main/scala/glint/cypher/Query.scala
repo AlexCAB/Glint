@@ -1,5 +1,5 @@
 package glint.cypher
-import glint.database.Connector
+import glint.database.Provider
 import scala.concurrent.Future
 import java.util.Collections
 
@@ -9,27 +9,18 @@ import java.util.Collections
  * Created by CAB on 02.03.2015.
  */
 
-class Query[T](query:String, connector:Connector) {
+class Query[T](query:String, provider:Provider) {
   //Override methods
-  override def toString:String = s"glint.cypher.Query(query = $query, connector = $connector)"
+  override def toString:String = s"glint.cypher.Query(query = $query, connector = $provider)"
   //Methods
+  /**
+   * Convert Query to raw JSON response
+   */
+  def toRaw:Future[String] = provider.executeCypherWithRawResult(query)
   /**
    * Convert Query to future list of result
    */
-  def toList:Future[List[T]] = {
-
-
-    val r = connector.getConnection.executeQuery(query, Collections.emptyMap())
-
-    println(r)
-
-
-
-
-
-    null
-
-  }
+  def toList:Future[List[T]] = ???
 
 
 
