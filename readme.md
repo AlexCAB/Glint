@@ -11,7 +11,11 @@
     </div>
     </p>
     <div align="center"> 
-      <b>Current project stage:</b> Researching of capabilities. 
+      </p>
+      <b>Road map:</b> 
+    </div>
+    <div align="center"> 
+      <img border=0  width=800 height=500 src="docs/road_map.png">  
     </div>
     </body>
 </html>
