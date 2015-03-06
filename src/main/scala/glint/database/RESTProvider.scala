@@ -1,5 +1,6 @@
 package glint.database
 import java.nio.charset.Charset
+import java.util.concurrent.ExecutionException
 import com.ning.http.client.Response
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -9,6 +10,8 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.json4s.native.Serialization.{read, write}
 import org.json4s.DefaultFormats
+import scala.concurrent.duration._
+
 
 /**
  * Provide DB access through REST API
@@ -26,7 +29,7 @@ class RESTProvider(
   (implicit executor: ExecutionContext)
 extends Provider {
   //Parameters
-  val requestTimeout = Duration(10, "second")
+  val requestTimeout = 10.second
   val charEncoding = "UTF-8"
   val contentType = "application/json"
   val xStream = "true"
@@ -60,19 +63,25 @@ extends Provider {
         case res ⇒ Future.successful(res)}
       //Check result
       .map{
-        case res if res.getStatusCode == 200 ⇒ res
+        case res if res.getStatusCode == 200 ⇒ {
+          logger.trace("Data " + responseToString(res))
+          res}
         case res if res.getStatusCode == 400 ⇒ {
           val msg = s"""
             |Bad Request(400):
             |  request body = ${request.toRequest.getStringData}
             |  response body = ${res.getResponseBody}
              """.stripMargin
+          logger.error(msg)
           throw new DatabaseHTTPException(msg, res.getStatusCode, request, Some(res))}
-        case res if res.getStatusCode == 401 ⇒  throw new DatabaseHTTPException(
-          "No authorization:\n  " + responseToString(res), res.getStatusCode, request, Some(res))
-        case res ⇒ throw new DatabaseHTTPException(
-          s"Fail on http:\n  ${requestToString(request)}\n  ${responseToString(res)}",
-          res.getStatusCode, request, Some(res))}}
+        case res if res.getStatusCode == 401 ⇒ {
+          val msg = "No authorization:\n  " + responseToString(res)
+          logger.error(msg)
+          throw new DatabaseHTTPException(msg, res.getStatusCode, request, Some(res))}
+        case res ⇒ {
+          val msg = s"Fail on http:\n  ${requestToString(request)}\n  ${responseToString(res)}"
+          logger.error(msg)
+          throw new DatabaseHTTPException(msg, res.getStatusCode, request, Some(res))}}}
   //Get service root
   logger.debug(s"Start with URL: $dbURL, Authorization: ${auth.map{case(u,_) ⇒ u + ":*****"}}.")
   val (neo4jVersion, cypherPoint, transactionPoint) = {
@@ -81,7 +90,13 @@ extends Provider {
     //Preparing URL
     val url = "http://" + dbURL.stripPrefix("http://").stripPrefix("https://").stripSuffix("/") + "/db/data/"
     //Get JSON
-    val res = Await.result(makeRequest(constructRequest(url, None, "GET")), requestTimeout).getResponseBody
+    val res =
+      try{
+        Await.result(makeRequest(constructRequest(url, None, "GET")), requestTimeout).getResponseBody}
+      catch{
+        case e:ExecutionException ⇒ {
+          logger.error("Exception on http request when getting service root: " + e.getCause)
+          throw e.getCause}}
     //Get values
     try{
       val json = parse(res)
@@ -89,6 +104,7 @@ extends Provider {
        (json \ "cypher").extract[String],
        (json \ "transaction").extract[String])}
     catch{case e:MappingException ⇒
+      logger.error("Exception on extract JSON values when getting service root: " + e.getCause)
       throw new DatabaseException("Fail on get service root on parsing JSON: " + res)}
     }
   logger.debug(s"Neo4j version: $neo4jVersion. Obtained points: $cypherPoint, $transactionPoint")
@@ -96,10 +112,10 @@ extends Provider {
   override def toString:String = s"glint.database.RESTProvider(url = $dbURL)"
   //Methods
   def executeCypherWithRawResult(cypher:String, params:Map[String,Any]):Future[String] = {
+    logger.trace(s"Called executeCypherWithRawResult(cypher = $cypher, params = $params)")
     //Create JSON
     val json = write(Map("query" → cypher, "params" → params))
     //Make request
-    makeRequest(constructRequest(cypherPoint, Some(json))).map(_.getResponseBody)}
-
-
-}
+    makeRequest(constructRequest(cypherPoint, Some(json))).map(res ⇒ {
+      logger.trace("In executeCypherWithRawResult obtained: " + responseToString(res))
+      res.getResponseBody})}}

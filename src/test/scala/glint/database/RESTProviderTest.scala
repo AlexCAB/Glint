@@ -1,10 +1,9 @@
 package glint.database
-import helpers.DummyLogger
+import helpers.{FuturesHelpers, DummyLogger}
+import org.json4s._
+import org.json4s.native.JsonMethods._
 import org.specs2.mutable.Specification
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.util.{Success,Failure}
 
 
 /**
@@ -12,58 +11,63 @@ import scala.util.{Success,Failure}
  * Created by CAB on 04.03.2015.
  */
 
-class RESTProviderTest extends Specification{
+class RESTProviderTest extends Specification with FuturesHelpers{
   //Parameters
+  val url = "localhost:7474"
   val userPassword = Some("neo4j","1234")
+  //Helpers
+  private implicit val jsonFormats = DefaultFormats
   //Preparing
   System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO")
   //Testing
   "RESTProvider" should {
     "connect to DB" in {
+      //Preparing
       val logger = new DummyLogger("RESTProviderTest")
-      val provider = new RESTProvider(dbURL = "localhost:7474", auth = userPassword, logger)
-      //
-      todo
-
-    }
+      //Running
+      val provider = new RESTProvider(dbURL = url, auth = userPassword, logger)
+      //Checking
+      provider.cypherPoint mustEqual "http://localhost:7474/db/data/cypher"
+      logger.allCounts mustEqual (1,2,0,0,0)}
     "not connect to DB with wrong URL, user name or password" in {
-
-
-
-      todo
-    }
+      //Preparing
+      val logger = new DummyLogger("RESTProviderTest")
+      //Checking
+      new RESTProvider(dbURL = "-----:7474", auth = userPassword, logger) must throwA[java.net.ConnectException]
+      new RESTProvider(dbURL = url, auth = Some("---","1234"), logger) must throwA[DatabaseHTTPException]
+      new RESTProvider(dbURL = url, auth = Some("neo4j","---"), logger) must throwA[DatabaseHTTPException]
+      logger.allCounts mustEqual (0,3,0,0,3)}
     "execute Cypher with raw result" in {
-
-
-      todo
-    }
+      //Preparing
+      val logger = new DummyLogger("RESTProviderTest")
+      val provider = new RESTProvider(dbURL = url, auth = userPassword, logger)
+      //Running
+      val res = provider.executeCypherWithRawResult("create (n:N{a:123,b:'srt'}) return n", Map()).awaitResult
+      //Checking
+      (parse(res) \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> srt, a -> 123)))"
+      logger.allCounts mustEqual (4,2,0,0,0)}
     "fail on execute Cypher with raw result, if statement incorrect" in {
-      todo
-    }
-
-  }
-
-//
-//    import TestModel._
-//
-//    //Cypher
-//    val futureResult = query("crefate (a:A{ a:123, b:{par1}}) return a").withParams(Map("par1" → "test")).toRaw
-//    //    val futureResult = query[A]("create (a:A{ a:123456, b:{par1}}) return a").withParam("par1" → "test").toRaw
-//    //    val futureResult = query[A]("create (a:A{ a:{par2}, b:{par1}}) return a").withParam("par1" → "test").withParam("par2" → 4321).toRaw
-//
-//    //    val futureResult = query[A]("create (a:A{par1}) return a").withParams(Map("par1" → Map("a" →123, "b" → "ddd"))).toRaw
-//
-//
-//    futureResult.onComplete {
-//      case Success(s) ⇒ println("Result: " + s)
-//      case Failure(e) ⇒ println("Error: " + e)}
-//    Await.ready(futureResult, Duration(10, "second"))
-
-
-
-
-
-
-
-
-}
+      //Preparing
+      val logger = new DummyLogger("RESTProviderTest")
+      val provider = new RESTProvider(dbURL = url, auth = userPassword, logger)
+      //Running
+      val res = provider.executeCypherWithRawResult("tttttt (n:N{a:123,b:'srt'}) return n", Map()).awaitFailure
+      //Checking
+      res must haveClass[DatabaseHTTPException]
+      logger.allCounts mustEqual (2,2,0,0,1)}
+    "execute Cypher with raw result with parameters" in {
+      //Preparing
+      val logger = new DummyLogger("RESTProviderTest")
+      val provider = new RESTProvider(dbURL = url, auth = userPassword, logger)
+      //Running
+      val res1 = provider.executeCypherWithRawResult(
+        "create (n:N{a:{p1},b:'srt'}) return n", Map("p1" → 123456)).awaitResult
+      val res2 = provider.executeCypherWithRawResult(
+        "create (n:N{a:123,b:{p2}}) return n", Map("p2" → "string")).awaitResult
+      val res3 = provider.executeCypherWithRawResult(
+        "create (n:N{p3}) return n", Map("p3" → Map("a" → 321, "b" → "trs"))).awaitResult
+      //Checking
+      (parse(res1) \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> srt, a -> 123456)))"
+      (parse(res2) \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> string, a -> 123)))"
+      (parse(res3) \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> trs, a -> 321)))"
+      logger.allCounts mustEqual (10,2,0,0,0)}}}
