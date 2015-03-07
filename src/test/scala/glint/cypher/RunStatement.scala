@@ -19,7 +19,9 @@ class RunStatement extends Specification{
   //Preparing
   System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO")
   //Data model
-  object TestModel extends Model(new RESTProvider(auth = userPassword)) with Cypher{
+  object TestModel extends Model with Cypher{
+    //Parameters
+    val provider = new RESTProvider(auth = userPassword)
     //Nodes
     class A(i:Int,s:String) extends Node}
   //Testing
@@ -28,11 +30,13 @@ class RunStatement extends Specification{
       import TestModel._
 
       //Cypher
-      val futureResult = query("crefate (a:A{ a:123, b:{par1}}) return a").withParams(Map("par1" → "test")).toRaw
+//      val futureResult = query("create (a:A)-[r:R{ a:123, b:'str'}]->(b:B) return count(a), a").toRaw
       //    val futureResult = query[A]("create (a:A{ a:123456, b:{par1}}) return a").withParam("par1" → "test").toRaw
       //    val futureResult = query[A]("create (a:A{ a:{par2}, b:{par1}}) return a").withParam("par1" → "test").withParam("par2" → 4321).toRaw
 
       //    val futureResult = query[A]("create (a:A{par1}) return a").withParams(Map("par1" → Map("a" →123, "b" → "ddd"))).toRaw
+
+      val futureResult = query[String]("return 'test_string'").toList
 
 
       futureResult.onComplete {
@@ -48,3 +52,18 @@ class RunStatement extends Specification{
   }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

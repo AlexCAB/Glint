@@ -70,4 +70,13 @@ class RESTProviderTest extends Specification with FuturesHelpers{
       (parse(res1) \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> srt, a -> 123456)))"
       (parse(res2) \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> string, a -> 123)))"
       (parse(res3) \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> trs, a -> 321)))"
-      logger.allCounts mustEqual (10,2,0,0,0)}}}
+      logger.allCounts mustEqual (10,2,0,0,0)}
+    "execute Cypher with parsed result" in {
+      //Preparing
+      val logger = new DummyLogger("RESTProviderTest")
+      val provider = new RESTProvider(dbURL = url, auth = userPassword, logger)
+      //Running
+      val res = provider.executeCypherWithJSONResult("create (n:N{a:123,b:'srt'}) return n", Map()).awaitResult
+      //Checking
+      (res \\ "data").extractOpt[Any].toString mustEqual "Some(Map(data -> Map(b -> srt, a -> 123)))"
+      logger.allCounts mustEqual (4,2,0,0,0)}}}

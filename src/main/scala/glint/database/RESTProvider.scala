@@ -2,6 +2,7 @@ package glint.database
 import java.nio.charset.Charset
 import java.util.concurrent.ExecutionException
 import com.ning.http.client.Response
+import org.json4s.JsonAST.JValue
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import dispatch.{host,Req,Http,url}
@@ -118,4 +119,13 @@ extends Provider {
     //Make request
     makeRequest(constructRequest(cypherPoint, Some(json))).map(res ⇒ {
       logger.trace("In executeCypherWithRawResult obtained: " + responseToString(res))
-      res.getResponseBody})}}
+      res.getResponseBody})}
+  def executeCypherWithJSONResult(cypher:String, params:Map[String,Any]):Future[JValue] = {
+    import org.json4s.native.JsonMethods._
+    logger.trace(s"Called executeCypherWithJSONResult(cypher = $cypher, params = $params)")
+    //Create JSON
+    val json = write(Map("query" → cypher, "params" → params))
+    //Make request
+    makeRequest(constructRequest(cypherPoint, Some(json))).map(res ⇒ {
+      logger.trace("In executeCypherWithJSONResult obtained: " + responseToString(res))
+      parse(res.getResponseBody)})}}

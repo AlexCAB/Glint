@@ -6,6 +6,6 @@ package glint.model
  * Created by CAB on 01.03.2015.
  */
 
-trait Relationship extends Glint {
+trait Relation extends Glint {
   val source:Node = null
   val target:Node = null}

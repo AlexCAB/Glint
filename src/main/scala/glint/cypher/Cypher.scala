@@ -1,5 +1,6 @@
 package glint.cypher
 import glint.model.Model
+import reflect.runtime.universe.{typeTag,TypeTag}
 
 
 /**
@@ -20,7 +21,4 @@ trait Cypher {
    * @tparam T - result type
    * @return - Query instance
    */
-  def query[T](q:String):Query[T] = new Query[T](q, model.provider)
-
-
-}
+  def query[T : TypeTag](q:String):Query[T] = new Query[T](model, q)}
